@@ -1,0 +1,29 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <!--tools:context="project.thesis.vgu.mqtt.MqttFragment -->
+    <!--tools:showIn="@layout/activity_main"-->
+
+    <TextView
+        android:id="@+id/tv"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="No Connection"
+        android:textAlignment="center"
+        android:textColor="@android:color/holo_red_light"/>
+
+    <ListView
+        android:id="@+id/list"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_below="@id/tv"/>
+
+    <!--<EditText
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/subscribeTopic"
+        android:layout_alignParentBottom="true"
+        android:hint="sub"/>-->
+</RelativeLayout>

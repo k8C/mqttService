@@ -8,10 +8,9 @@ import android.content.SharedPreferences;
 import android.net.ConnectivityManager;
 import android.os.Handler;
 import android.os.IBinder;
+import android.os.PowerManager;
 import android.os.SystemClock;
 import android.preference.PreferenceManager;
-import android.support.v4.app.NotificationCompat;
-import android.support.v4.app.NotificationManagerCompat;
 import android.util.Log;
 
 import com.google.gson.Gson;
@@ -30,53 +29,52 @@ import org.eclipse.paho.client.mqttv3.MqttMessage;
 import java.lang.reflect.Type;
 import java.util.List;
 
+import androidx.core.app.NotificationCompat;
+import androidx.core.app.NotificationManagerCompat;
+
 public class MqttService extends Service {
     private static final String TAG = "mqtt";
     Topic[] topics;
-
-    public MqttService() {
-    }
+    PowerManager.WakeLock wakeLock;
 
     @Override
     public IBinder onBind(Intent intent) {
         return null;
     }
 
-    public MqttAsyncClient client;
-    public MqttConnectOptions option;
-    public IMqttToken connectToken, subscribeToken;
+    MqttAsyncClient client;
 
     @Override
     public int onStartCommand(Intent intent, int flags, final int startId) {
-        startForeground(1, new NotificationCompat.Builder(this, "service")
-                .addAction(0, "STOP", PendingIntent.getBroadcast(this, 0, new Intent(this, NotificationReceiver.class), 0))
-                .setPriority(NotificationCompat.PRIORITY_LOW).setVisibility(NotificationCompat.VISIBILITY_SECRET)
-                .setSmallIcon(R.drawable.ic_stat_name).setContentTitle("MQTT service is running").build());
         String topicsJson = PreferenceManager.getDefaultSharedPreferences(this).getString("topics", null);
         if (topicsJson == null) {
             stopSelf();
             Log.e(TAG, "no data to process, service terminated");
             return START_NOT_STICKY;
         }
+        startForeground(1, new NotificationCompat.Builder(this, "service")
+                .addAction(0, "STOP", PendingIntent.getBroadcast(this, 0, new Intent(this, NotificationReceiver.class), 0))
+                .setPriority(NotificationCompat.PRIORITY_LOW).setVisibility(NotificationCompat.VISIBILITY_SECRET)
+                .setSmallIcon(R.drawable.ic_stat_name).setContentTitle("MQTT service is running").build());
+        wakeLock = ((PowerManager)getSystemService(Context.POWER_SERVICE)).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "mqtt::k8c");
+        wakeLock.acquire();
         List<Topic> topicList = new Gson().fromJson(topicsJson, new TypeToken<List<Topic>>() {
         }.getType());
         for (int i = 0; i < topicList.size(); i++) {
-            if (topicList.get(i).notify == false) {
+            if (!topicList.get(i).notify) {
                 topicList.remove(i);
                 i--;
             }
         }
-        topics = (Topic[]) topicList.toArray();
+        topics = topicList.toArray(new Topic[topicList.size()]);
 
         try {
-            Log.e(TAG, "123");
             client = new MqttAsyncClient("tcp://io.adafruit.com:1883", "k8c53795cakn", null);
-            Log.e(TAG, "456");
         } catch (MqttException e) {
             Log.e(TAG, "constructor exception: " + e.getMessage());
             e.printStackTrace();
         }
-        option = new MqttConnectOptions();
+        MqttConnectOptions option = new MqttConnectOptions();
         option.setAutomaticReconnect(true);
         option.setCleanSession(false);
         option.setUserName("monokia");
@@ -85,24 +83,31 @@ public class MqttService extends Service {
             boolean notify = false;
             float value;
             String notificationText;
+            int i;
+
             @Override
             public void connectComplete(boolean reconnect, String serverURI) {
                 Log.e(TAG, "connectComplete");
                 try {
-                    for (int i = 0; i < topics.length; i++) {
-                        client.subscribe(topics[i].name, 1);
-                    }
-                    /*client.subscribe("monokia/f/cond", 1, null, new IMqttActionListener() {
-                        @Override
-                        public void onSuccess(IMqttToken asyncActionToken) {
-                            Log.e(TAG, "subscribe success");
-                        }
+                    for (Topic topic : topics) {
+                        client.subscribe(topic.name, 1, null, new IMqttActionListener() {
+                            @Override
+                            public void onSuccess(IMqttToken asyncActionToken) {
+                                Log.e(TAG, "Subscribe Success To " + asyncActionToken.getTopics()[0]);
+                            }
 
-                        @Override
-                        public void onFailure(IMqttToken asyncActionToken, Throwable exception) {
-                            Log.e(TAG, "subscribe fail");
-                        }
-                    });*/
+                            @Override
+                            public void onFailure(IMqttToken asyncActionToken, Throwable exception) {
+                                Log.e(TAG, "Subscribe Fail, Retrying");
+                                try {
+                                    client.subscribe(asyncActionToken.getTopics()[0], 1, null, this);
+                                } catch (MqttException e) {
+                                    Log.e(TAG, "Exception Why Retrying To Subscribe");
+                                    e.printStackTrace();
+                                }
+                            }
+                        });
+                    }
                 } catch (MqttException e) {
                     Log.e(TAG, "subscribe mqttException: " + e.getMessage());
                     e.printStackTrace();
@@ -115,33 +120,35 @@ public class MqttService extends Service {
             }
 
             @Override
-            public void messageArrived(String topic, MqttMessage message) throws Exception {
-                Log.e(TAG, topic + ": " + message);
-                for (int i = 0; i < topics.length; i++) {
-                    if (topics[i].name == topic) {
-                        if (topics[i].max != null) {
+            public void messageArrived(String topicName, MqttMessage message) throws Exception {
+                Log.e(TAG, topicName + ": " + message);
+                i = 2;
+                for (Topic topic : topics) {
+                    if (topic.name.equals(topicName)) {
+                        if (topic.max != null) {
                             value = Float.parseFloat(message.toString());
-                            if (topics[i].max < value) {
+                            if (topic.max < value) {
                                 notify = true;
-                                notificationText = "Value is " + value + " > " + topics[i].max;
+                                notificationText = "Value is " + value + " > " + topic.max;
                             }
-                        } else if (topics[i].min != null) {
+                        } else if (topic.min != null) {
                             value = Float.parseFloat(message.toString());
-                            if (topics[i].min > value) {
+                            if (topic.min > value) {
                                 notify = true;
-                                notificationText = "Value is " + value + " < " + topics[i].min;
+                                notificationText = "Value is " + value + " < " + topic.min;
                             }
                         }
                         if (notify) {
-                            NotificationManagerCompat.from(MqttService.this).notify(i+2, new NotificationCompat.Builder(MqttService.this, "mqttTopic")
+                            NotificationManagerCompat.from(MqttService.this).notify(i, new NotificationCompat.Builder(MqttService.this, "mqttTopic")
                                     .setContentIntent(PendingIntent.getActivity(MqttService.this, 0, new Intent(MqttService.this, MainActivity.class), 0))
                                     .setPriority(NotificationCompat.PRIORITY_MAX).setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-                                    .setSmallIcon(R.drawable.ic_stat_name).setContentTitle("WARNING Topic " + topic)
+                                    .setSmallIcon(R.drawable.ic_stat_name).setContentTitle("WARNING Topic " + topicName)
                                     .setContentText(notificationText).setAutoCancel(true).build());
                             notify = false;
                         }
                         break;
                     }
+                    i++;
                 }
             }
 
@@ -159,7 +166,7 @@ public class MqttService extends Service {
 
                 @Override
                 public void onFailure(IMqttToken asyncActionToken, Throwable exception) {
-                    Log.e(TAG, "connect fail");
+                    Log.e(TAG, "connect fail, retrying");
                     try {
                         client.reconnect();
                     } catch (MqttException e) {
@@ -172,7 +179,6 @@ public class MqttService extends Service {
             Log.e(TAG, "connect exception: " + e.getMessage());
             e.printStackTrace();
         }
-        Log.e(TAG, "onStartCommand: ");
         return START_STICKY;
     }
 
@@ -190,9 +196,11 @@ public class MqttService extends Service {
         super.onDestroy();
         Log.e(TAG, "service onDestroy");
         try {
-            client.disconnectForcibly();
+            client.disconnect(0);
         } catch (MqttException e) {
+            Log.e(TAG, "disconnectForcibly exception "+ e.getMessage());
             e.printStackTrace();
         }
+        wakeLock.release();
     }
 }

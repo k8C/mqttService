@@ -6,5 +6,5 @@ package project.thesis.vgu.mqtt;
 public class Topic {
     boolean isSubscribed = true, notify;
     Float max, min;
-    String name;
+    String name, value;
 }

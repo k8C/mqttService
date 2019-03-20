@@ -12,18 +12,11 @@
         android:layout_height="wrap_content"
         android:text="No Connection"
         android:textAlignment="center"
-        android:textColor="@android:color/holo_red_light"/>
+        android:textColor="@android:color/holo_red_dark"/>
 
     <ListView
         android:id="@+id/list"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_below="@id/tv"/>
-
-    <!--<EditText
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:id="@+id/subscribeTopic"
-        android:layout_alignParentBottom="true"
-        android:hint="sub"/>-->
 </RelativeLayout>

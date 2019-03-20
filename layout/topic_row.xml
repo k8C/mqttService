@@ -11,6 +11,13 @@
         android:text="abc/feeds/temp"
         android:textSize="23dp"
         android:textStyle="italic" />
+    <View
+        android:id="@+id/status"
+        android:layout_width="9dp"
+        android:layout_height="9dp"
+        android:layout_margin="7dp"
+        android:background="#cc0000"
+        android:layout_alignParentEnd="true"/>
 
     <TextView
         android:id="@+id/value"

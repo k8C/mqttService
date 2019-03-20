@@ -18,7 +18,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 
 public class MainActivity extends AppCompatActivity {
-    private static final String TAG = "mqtt";
+    static final String TAG = "mqtt";
     boolean atLeastOreo = Build.VERSION.SDK_INT >= 26;
     boolean notifyInBackground;
 

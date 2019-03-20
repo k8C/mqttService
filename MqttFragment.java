@@ -56,7 +56,6 @@ import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 
 public class MqttFragment extends Fragment {
-    private static final String TAG = "mqtt";
     ConnectivityManager.NetworkCallback connectionCallback;
     List<Topic> topics;
     ListView listView;
@@ -76,30 +75,20 @@ public class MqttFragment extends Fragment {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         //setRetainInstance(true); //retain variables across configchanges, onCreate and onDestroy not called
-        Log.e(TAG, "fragment onCreate");
+        Log.e(MainActivity.TAG, "fragment onCreate");
         connectionCallback = new ConnectivityManager.NetworkCallback() {
             boolean noConnection = false;
 
             @Override
             public void onLost(Network network) {
-                if (!noConnection) {
-                    Snackbar.make(listView, "No Connection", Snackbar.LENGTH_INDEFINITE).show();
-                    noConnection = true;
-                }
+                Snackbar.make(listView, "No Connection", Snackbar.LENGTH_INDEFINITE).show();
+                noConnection = true;
             }
 
             @Override
             public void onAvailable(Network network) {
                 if (noConnection) {
                     Snackbar.make(listView, "Connected", Snackbar.LENGTH_SHORT).show();
-                    noConnection = false;
-                } else {
-                    tv.post(new Runnable() {
-                        @Override
-                        public void run() {
-                            tv.setText("io.adafruit.com");
-                        }
-                    });
                 }
                 //client.connect;
             }
@@ -202,16 +191,16 @@ public class MqttFragment extends Fragment {
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        Log.e(TAG, "fragment onCreateView");
-        if (savedInstanceState != null) Log.e(TAG, "onCreateView savedInstanceState != null");
+        Log.e(MainActivity.TAG, "fragment onCreateView");
+        if (savedInstanceState != null) Log.e(MainActivity.TAG, "onCreateView savedInstanceState != null");
         return inflater.inflate(R.layout.fragment_main, container, false);
     }
 
     @Override
     public void onActivityCreated(Bundle savedInstanceState) {
         super.onActivityCreated(savedInstanceState);
-        Log.e(TAG, "onActivityCreated");
-        if (savedInstanceState != null) Log.e(TAG, "onActivityCreated savedInstanceState != null");
+        Log.e(MainActivity.TAG, "onActivityCreated");
+        if (savedInstanceState != null) Log.e(MainActivity.TAG, "onActivityCreated savedInstanceState != null");
         tv = getActivity().findViewById(R.id.tv);
 
         String topicsJson = PreferenceManager.getDefaultSharedPreferences(getContext()).getString("topics", null);
@@ -219,11 +208,9 @@ public class MqttFragment extends Fragment {
             topics = new Gson().fromJson(topicsJson, new TypeToken<List<Topic>>() {
             }.getType());
         } else {
-            Topic cond = new Topic();
+            Topic cond = new Topic(), ph = new Topic(), temp = new Topic();
             cond.name = "monokia/f/cond";
-            Topic ph = new Topic();
             ph.name = "monokia/f/ph";
-            Topic temp = new Topic();
             temp.name = "monokia/f/temp";
             topics = new ArrayList<Topic>();
             topics.add(cond);
@@ -239,7 +226,7 @@ public class MqttFragment extends Fragment {
         try {
             client = new MqttAsyncClient("tcp://io.adafruit.com:1883", "k8c53795cakn", null);
         } catch (MqttException e) {
-            Log.e(TAG, "constructor exception: " + e.getMessage());
+            Log.e(MainActivity.TAG, "constructor exception: " + e.getMessage());
             e.printStackTrace();
         }
         client.setCallback(new MqttCallbackExtended() {
@@ -249,6 +236,7 @@ public class MqttFragment extends Fragment {
                 try {
                     for (Topic topic : topics) {
                         if (topic.isSubscribed) {
+                            Log.e(MainActivity.TAG, "subscribe again");
                             client.subscribe(topic.name, 1, null, new IMqttActionListener() {
                                 @Override
                                 public void onSuccess(IMqttToken asyncActionToken) {
@@ -262,7 +250,7 @@ public class MqttFragment extends Fragment {
                         }
                     }
                 } catch (MqttException e) {
-                    Log.e(TAG, "subscribe mqttException: " + e.getMessage());
+                    Log.e(MainActivity.TAG, "subscribe mqttException: " + e.getMessage());
                     e.printStackTrace();
                 }
             }
@@ -273,7 +261,7 @@ public class MqttFragment extends Fragment {
                 try {
                     client.reconnect();
                 } catch (MqttException e) {
-                    Log.e(TAG, "connectionLost reconnect exception");
+                    Log.e(MainActivity.TAG, "connectionLost reconnect exception");
                     e.printStackTrace();
                 }
             }
@@ -281,12 +269,12 @@ public class MqttFragment extends Fragment {
             @Override
             public void messageArrived(String topic, MqttMessage message) throws Exception {
                 handler.obtainMessage(0, new String[]{topic, message.toString()}).sendToTarget();
-                Log.e(TAG, topic + ": " + message);
+                Log.e(MainActivity.TAG, topic + ": " + message);
             }
 
             @Override
             public void deliveryComplete(IMqttDeliveryToken token) {
-                Log.e(TAG, "deliveryComplete");
+                Log.e(MainActivity.TAG, "deliveryComplete");
             }
         });
     }
@@ -301,19 +289,18 @@ public class MqttFragment extends Fragment {
                 MqttConnectOptions option = new MqttConnectOptions();
                 option.setAutomaticReconnect(true);
                 option.setMaxReconnectDelay(5);
-                option.setCleanSession(false);
+                option.setCleanSession(true);
                 option.setUserName("monokia");
                 option.setPassword("b19057d0daee4a4db05b4c0c1ed9166d".toCharArray());
-
                 client.connect(option, null, new IMqttActionListener() {
                     @Override
                     public void onSuccess(IMqttToken asyncActionToken) {
-                        Log.e(TAG, "connect success");
+                        Log.e(MainActivity.TAG, "connect success");
                     }
 
                     @Override
                     public void onFailure(IMqttToken asyncActionToken, Throwable exception) {
-                        Log.e(TAG, "connect fail");
+                        Log.e(MainActivity.TAG, "connect fail");
                         try {
                             client.reconnect();
                         } catch (MqttException e) {
@@ -325,29 +312,28 @@ public class MqttFragment extends Fragment {
                 firstTime = false;
             } else client.reconnect();
         } catch (MqttException e) {
-            Log.e(TAG, "onStart connect exception");
+            Log.e(MainActivity.TAG, "onStart connect exception");
             e.printStackTrace();
         }
     }
 
     @Override
     public void onStop() {
-        Log.e(TAG, "fragment onStop");
+        Log.e(MainActivity.TAG, "fragment onStop");
         super.onStop();
         try {
             client.disconnect(0);
         } catch (MqttException e) {
-            Log.e(TAG, "onStop disconnect exception");
+            Log.e(MainActivity.TAG, "onStop disconnect exception");
             e.printStackTrace();
         }
         ((ConnectivityManager) getContext().getSystemService(Context.CONNECTIVITY_SERVICE)).unregisterNetworkCallback(connectionCallback);
-        tv.setText("No Connection");
         PreferenceManager.getDefaultSharedPreferences(getContext()).edit().putString("topics", new Gson().toJson(topics)).apply();
     }
 
     @Override
     public void onDestroy() {
-        Log.e(TAG, "fragment onDestroy");
+        Log.e(MainActivity.TAG, "fragment onDestroy");
         super.onDestroy();
     }
 
@@ -400,7 +386,7 @@ public class MqttFragment extends Fragment {
                                             try {
                                                 client.publish(topics.get(number).name, ((EditText) publishDialog.findViewById(R.id.publishText)).getText().toString().getBytes(), 1, ((CheckBox) publishDialog.findViewById(R.id.retain)).isChecked(), null, publishListener);
                                             } catch (MqttException e) {
-                                                Log.e(TAG, "publish exception");
+                                                Log.e(MainActivity.TAG, "publish exception");
                                                 e.printStackTrace();
                                             }
                                         }
@@ -477,7 +463,7 @@ public class MqttFragment extends Fragment {
 
     @Override
     public void onCreateContextMenu(ContextMenu menu, View v, ContextMenu.ContextMenuInfo menuInfo) {
-        Log.e(TAG, "onCreateContextMenu");
+        Log.e(MainActivity.TAG, "onCreateContextMenu");
         getActivity().getMenuInflater().inflate(R.menu.listview_contextmenu, menu);
     }
 
@@ -489,7 +475,7 @@ public class MqttFragment extends Fragment {
                 try {
                     client.subscribe(topics.get(position).name, 1, null, subscribeListener);
                 } catch (MqttException e) {
-                    Log.e(TAG, "subscribe exception");
+                    Log.e(MainActivity.TAG, "subscribe exception");
                     e.printStackTrace();
                 }
                 break;
@@ -497,7 +483,7 @@ public class MqttFragment extends Fragment {
                 try {
                     client.unsubscribe(topics.get(position).name, null, unsubscribeListener);
                 } catch (MqttException e) {
-                    Log.e(TAG, "unsubscribe exception");
+                    Log.e(MainActivity.TAG, "unsubscribe exception");
                     e.printStackTrace();
                 }
                 break;

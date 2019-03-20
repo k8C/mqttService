@@ -33,7 +33,6 @@ import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 
 public class MqttService extends Service {
-    private static final String TAG = "mqtt";
     Topic[] topics;
     PowerManager.WakeLock wakeLock;
 
@@ -49,14 +48,14 @@ public class MqttService extends Service {
         String topicsJson = PreferenceManager.getDefaultSharedPreferences(this).getString("topics", null);
         if (topicsJson == null) {
             stopSelf();
-            Log.e(TAG, "no data to process, service terminated");
+            Log.e(MainActivity.TAG, "no data to process, service terminated");
             return START_NOT_STICKY;
         }
         startForeground(1, new NotificationCompat.Builder(this, "service")
                 .addAction(0, "STOP", PendingIntent.getBroadcast(this, 0, new Intent(this, NotificationReceiver.class), 0))
                 .setPriority(NotificationCompat.PRIORITY_LOW).setVisibility(NotificationCompat.VISIBILITY_SECRET)
                 .setSmallIcon(R.drawable.ic_stat_name).setContentTitle("MQTT service is running").build());
-        wakeLock = ((PowerManager)getSystemService(Context.POWER_SERVICE)).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "mqtt::k8c");
+        wakeLock = ((PowerManager) getSystemService(Context.POWER_SERVICE)).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "mqtt::k8c");
         wakeLock.acquire();
         List<Topic> topicList = new Gson().fromJson(topicsJson, new TypeToken<List<Topic>>() {
         }.getType());
@@ -71,7 +70,7 @@ public class MqttService extends Service {
         try {
             client = new MqttAsyncClient("tcp://io.adafruit.com:1883", "k8c53795cakn", null);
         } catch (MqttException e) {
-            Log.e(TAG, "constructor exception: " + e.getMessage());
+            Log.e(MainActivity.TAG, "constructor exception: " + e.getMessage());
             e.printStackTrace();
         }
         MqttConnectOptions option = new MqttConnectOptions();
@@ -87,41 +86,41 @@ public class MqttService extends Service {
 
             @Override
             public void connectComplete(boolean reconnect, String serverURI) {
-                Log.e(TAG, "connectComplete");
+                //Log.e(MainActivity.TAG, "connectComplete");
                 try {
                     for (Topic topic : topics) {
                         client.subscribe(topic.name, 1, null, new IMqttActionListener() {
                             @Override
                             public void onSuccess(IMqttToken asyncActionToken) {
-                                Log.e(TAG, "Subscribe Success To " + asyncActionToken.getTopics()[0]);
+                                Log.e(MainActivity.TAG, "Subscribe Success To " + asyncActionToken.getTopics()[0]);
                             }
 
                             @Override
                             public void onFailure(IMqttToken asyncActionToken, Throwable exception) {
-                                Log.e(TAG, "Subscribe Fail, Retrying");
+                                Log.e(MainActivity.TAG, "Subscribe Fail, Retrying");
                                 try {
                                     client.subscribe(asyncActionToken.getTopics()[0], 1, null, this);
                                 } catch (MqttException e) {
-                                    Log.e(TAG, "Exception Why Retrying To Subscribe");
+                                    Log.e(MainActivity.TAG, "Exception Why Retrying To Subscribe");
                                     e.printStackTrace();
                                 }
                             }
                         });
                     }
                 } catch (MqttException e) {
-                    Log.e(TAG, "subscribe mqttException: " + e.getMessage());
+                    Log.e(MainActivity.TAG, "subscribe mqttException: " + e.getMessage());
                     e.printStackTrace();
                 }
             }
 
             @Override
             public void connectionLost(Throwable cause) {
-                Log.e(TAG, "connectionLost");
+                //Log.e(MainActivity.TAG, "connectionLost");
             }
 
             @Override
             public void messageArrived(String topicName, MqttMessage message) throws Exception {
-                Log.e(TAG, topicName + ": " + message);
+                Log.e(MainActivity.TAG, topicName + ": " + message);
                 i = 2;
                 for (Topic topic : topics) {
                     if (topic.name.equals(topicName)) {
@@ -154,53 +153,43 @@ public class MqttService extends Service {
 
             @Override
             public void deliveryComplete(IMqttDeliveryToken token) {
-                Log.e(TAG, "deliveryComplete");
             }
         });
         try {
             client.connect(option, null, new IMqttActionListener() {
                 @Override
                 public void onSuccess(IMqttToken asyncActionToken) {
-                    Log.e(TAG, "connect success");
+                    //Log.e(MainActivity.TAG, "connect success");
                 }
 
                 @Override
                 public void onFailure(IMqttToken asyncActionToken, Throwable exception) {
-                    Log.e(TAG, "connect fail, retrying");
+                    //Log.e(MainActivity.TAG, "connect fail, retrying");
                     try {
                         client.reconnect();
                     } catch (MqttException e) {
-                        Log.e(TAG, "reconnect exception: " + e.getMessage());
+                        Log.e(MainActivity.TAG, "reconnect exception: " + e.getMessage());
                         e.printStackTrace();
                     }
                 }
             });
         } catch (MqttException e) {
-            Log.e(TAG, "connect exception: " + e.getMessage());
+            Log.e(MainActivity.TAG, "connect exception: " + e.getMessage());
             e.printStackTrace();
         }
         return START_STICKY;
     }
 
     @Override
-    public void onCreate() {
-        super.onCreate();
-        Log.e(TAG, "service onCreate");
-//        List<Topic> topics = null;
-//        SharedPreferences appData = PreferenceManager.getDefaultSharedPreferences(this);
-//        SharedPreferences.Editor storageManager = appData.edit();
-    }
-
-    @Override
     public void onDestroy() {
-        super.onDestroy();
-        Log.e(TAG, "service onDestroy");
+        Log.e(MainActivity.TAG, "service onDestroy");
         try {
             client.disconnect(0);
         } catch (MqttException e) {
-            Log.e(TAG, "disconnectForcibly exception "+ e.getMessage());
+            Log.e(MainActivity.TAG, "disconnectForcibly exception " + e.getMessage());
             e.printStackTrace();
         }
         wakeLock.release();
+        super.onDestroy();
     }
 }

@@ -4,20 +4,23 @@
     android:layout_height="86dp"
     android:descendantFocusability="blocksDescendants">
 
-    <TextView
-        android:id="@+id/topic"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="abc/feeds/temp"
-        android:textSize="23dp"
-        android:textStyle="italic" />
     <View
         android:id="@+id/status"
         android:layout_width="9dp"
         android:layout_height="9dp"
-        android:layout_margin="7dp"
-        android:background="#cc0000"
-        android:layout_alignParentEnd="true"/>
+        android:layout_marginEnd="6dp"
+        android:layout_marginStart="6dp"
+        android:layout_marginTop="13.5dp"
+        android:background="#cc0000" />
+
+    <TextView
+        android:id="@+id/topic"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_toEndOf="@id/status"
+        android:text="abc/feeds/temp"
+        android:textSize="23dp"
+        android:textStyle="italic" />
 
     <TextView
         android:id="@+id/value"

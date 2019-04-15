@@ -10,6 +10,7 @@ android {
         targetSdkVersion 28
         versionCode 1
         versionName "1.0"
+        multiDexEnabled = true
     }
     buildTypes {
         release {
@@ -32,8 +33,9 @@ dependencies {
         exclude group: 'androidx.vectordrawable', module: 'vectordrawable-animated'
     }
     compile 'org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.1'
+    compile 'com.google.code.gson:gson:2.8.5'
+    compile 'com.jjoe64:graphview:4.2.2'
+}
 /*    compile ('org.eclipse.paho:org.eclipse.paho.android.service:1.1.1') {
         exclude module: 'support-v4'
     }*/
-    compile 'com.google.code.gson:gson:2.8.5'
-}

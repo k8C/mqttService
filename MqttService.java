@@ -35,26 +35,25 @@ import androidx.core.app.NotificationManagerCompat;
 public class MqttService extends Service {
     Topic[] topics;
     PowerManager.WakeLock wakeLock;
+    MqttAsyncClient client;
 
     @Override
     public IBinder onBind(Intent intent) {
         return null;
     }
 
-    MqttAsyncClient client;
-
     @Override
-    public int onStartCommand(Intent intent, int flags, final int startId) {
+    public int onStartCommand(Intent intent, int flags, int startId) {
         String topicsJson = PreferenceManager.getDefaultSharedPreferences(this).getString("topics", null);
+        startForeground(1, new NotificationCompat.Builder(this, "service")
+                .addAction(0, "STOP", PendingIntent.getBroadcast(this, 0, new Intent(this, NotificationReceiver.class), 0))
+                .setPriority(NotificationCompat.PRIORITY_LOW).setVisibility(NotificationCompat.VISIBILITY_SECRET)
+                .setSmallIcon(R.drawable.app2).setContentTitle("MQTT service is running").build());
         if (topicsJson == null) {
             stopSelf();
             Log.e(MainActivity.TAG, "no data to process, service terminated");
             return START_NOT_STICKY;
         }
-        startForeground(1, new NotificationCompat.Builder(this, "service")
-                .addAction(0, "STOP", PendingIntent.getBroadcast(this, 0, new Intent(this, NotificationReceiver.class), 0))
-                .setPriority(NotificationCompat.PRIORITY_LOW).setVisibility(NotificationCompat.VISIBILITY_SECRET)
-                .setSmallIcon(R.drawable.ic_stat_name).setContentTitle("MQTT service is running").build());
         wakeLock = ((PowerManager) getSystemService(Context.POWER_SERVICE)).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "mqtt::k8c");
         wakeLock.acquire();
         List<Topic> topicList = new Gson().fromJson(topicsJson, new TypeToken<List<Topic>>() {
@@ -141,7 +140,7 @@ public class MqttService extends Service {
                             NotificationManagerCompat.from(MqttService.this).notify(i, new NotificationCompat.Builder(MqttService.this, "mqttTopic")
                                     .setContentIntent(PendingIntent.getActivity(MqttService.this, 0, new Intent(MqttService.this, MainActivity.class), 0))
                                     .setPriority(NotificationCompat.PRIORITY_MAX).setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-                                    .setSmallIcon(R.drawable.ic_stat_name).setContentTitle("WARNING Topic " + topicName)
+                                    .setSmallIcon(R.drawable.app2).setContentTitle("WARNING Topic ".concat(topicName))
                                     .setContentText(notificationText).setAutoCancel(true).build());
                             notify = false;
                         }
@@ -184,12 +183,18 @@ public class MqttService extends Service {
     public void onDestroy() {
         Log.e(MainActivity.TAG, "service onDestroy");
         try {
-            client.disconnect(0);
+            //client.disconnect(0, null, null);
+            client.disconnectForcibly(0, 0, false);
         } catch (MqttException e) {
             Log.e(MainActivity.TAG, "disconnectForcibly exception " + e.getMessage());
             e.printStackTrace();
         }
+        try {
+            client.close(true);
+        } catch (MqttException e) {
+            Log.e(MainActivity.TAG, "close exception");
+            e.printStackTrace();
+        }
         wakeLock.release();
-        super.onDestroy();
     }
 }

@@ -2,16 +2,12 @@ package project.thesis.vgu.mqtt;
 
 import android.content.Context;
 import android.content.DialogInterface;
-import android.content.Intent;
-import android.content.SharedPreferences;
-import android.graphics.Color;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
 import android.os.Bundle;
 import android.os.Handler;
-import android.os.Looper;
 import android.os.Message;
 import android.preference.PreferenceManager;
 import android.util.Log;
@@ -22,7 +18,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.BaseAdapter;
-import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.ImageButton;
@@ -46,26 +41,21 @@ import org.eclipse.paho.client.mqttv3.MqttException;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
-import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 
 public class MqttFragment extends Fragment {
     ConnectivityManager.NetworkCallback connectionCallback;
     List<Topic> topics;
-    ListView listView;
     TopicAdapter topicAdapter;
     TextView tv;
     MqttAsyncClient client;
     Handler handler;
-    IMqttActionListener subscribeListener;
-    IMqttActionListener unsubscribeListener;
-    IMqttActionListener publishListener;
+    IMqttActionListener subscribeListener, unsubscribeListener, publishListener;
     boolean firstTime = true;
 
     public MqttFragment() {
@@ -75,21 +65,20 @@ public class MqttFragment extends Fragment {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         //setRetainInstance(true); //retain variables across configchanges, onCreate and onDestroy not called
-        Log.e(MainActivity.TAG, "fragment onCreate");
+        //Log.e(MainActivity.TAG, "MqttFragment onCreate");
         connectionCallback = new ConnectivityManager.NetworkCallback() {
             boolean noConnection = false;
 
             @Override
             public void onLost(Network network) {
-                Snackbar.make(listView, "No Connection", Snackbar.LENGTH_INDEFINITE).show();
+                Snackbar.make(getView(), "No Connection", Snackbar.LENGTH_INDEFINITE).show();
                 noConnection = true;
             }
 
             @Override
             public void onAvailable(Network network) {
-                if (noConnection) {
-                    Snackbar.make(listView, "Connected", Snackbar.LENGTH_SHORT).show();
-                }
+                if (noConnection)
+                    Snackbar.make(getView(), "Connected", Snackbar.LENGTH_SHORT).show();
                 //client.connect;
             }
         };
@@ -114,11 +103,10 @@ public class MqttFragment extends Fragment {
                                 topic.value = data[1];
                                 topicAdapter.notifyDataSetChanged();
                                 if (topic.notify && ((topic.max != null && topic.max < Float.parseFloat(data[1]))
-                                        || (topic.min != null && topic.min > Float.parseFloat(data[1])))) {
+                                        || (topic.min != null && topic.min > Float.parseFloat(data[1]))))
                                     NotificationManagerCompat.from(getContext()).notify(1, new NotificationCompat.Builder(getContext(), "mqttTopic")
                                             .setPriority(NotificationCompat.PRIORITY_MAX).setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-                                            .setSmallIcon(R.drawable.ic_stat_name).setContentTitle("WARNING Topic " + data[0]).build());
-                                }
+                                            .setSmallIcon(R.drawable.app2).setContentTitle("WARNING Topic ".concat(data[0])).build());
                                 break;
                             }
                         }
@@ -129,7 +117,7 @@ public class MqttFragment extends Fragment {
                     case 2:
                         String topicName = (String) msg.obj;
                         changeStatus(topicName, false);
-                        Toast.makeText(getContext(), "Subscribe failed to " + topicName, Toast.LENGTH_SHORT).show();
+                        Toast.makeText(getContext(), "Subscribe failed to ".concat(topicName), Toast.LENGTH_SHORT).show();
                         break;
                     case 3:
                         changeStatus((String) msg.obj, false);
@@ -144,10 +132,10 @@ public class MqttFragment extends Fragment {
                         Toast.makeText(getContext(), "Publish failed", Toast.LENGTH_SHORT).show();
                         break;
                     case 7:
-                        tv.setTextColor(0xff669900);
+                        tv.setTextColor(0xff669900);//0xff669900//0xff99cc00
                         break;
                     case 8:
-                        tv.setTextColor(0xffcc0000);
+                        tv.setTextColor(0xffff4444);//0xffcc0000//0xffff4444
                         break;
                 }
 
@@ -191,23 +179,15 @@ public class MqttFragment extends Fragment {
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        Log.e(MainActivity.TAG, "fragment onCreateView");
-        if (savedInstanceState != null) Log.e(MainActivity.TAG, "onCreateView savedInstanceState != null");
-        return inflater.inflate(R.layout.fragment_main, container, false);
-    }
-
-    @Override
-    public void onActivityCreated(Bundle savedInstanceState) {
-        super.onActivityCreated(savedInstanceState);
-        Log.e(MainActivity.TAG, "onActivityCreated");
-        if (savedInstanceState != null) Log.e(MainActivity.TAG, "onActivityCreated savedInstanceState != null");
-        tv = getActivity().findViewById(R.id.tv);
-
+        //Log.e(MainActivity.TAG, "MqttFragment onCreateView");
+        //if (savedInstanceState != null) Log.e(MainActivity.TAG, "onCreateView savedInstanceState != null");
+        View view = inflater.inflate(R.layout.fragment_main, container, false);
+        tv = view.findViewById(R.id.tv);
         String topicsJson = PreferenceManager.getDefaultSharedPreferences(getContext()).getString("topics", null);
-        if (topicsJson != null) {
+        if (topicsJson != null)
             topics = new Gson().fromJson(topicsJson, new TypeToken<List<Topic>>() {
             }.getType());
-        } else {
+        else {
             Topic cond = new Topic(), ph = new Topic(), temp = new Topic();
             cond.name = "monokia/f/cond";
             ph.name = "monokia/f/ph";
@@ -218,10 +198,9 @@ public class MqttFragment extends Fragment {
             topics.add(temp);
         }
 
-        listView = getActivity().findViewById(R.id.list);
+        ListView listView = view.findViewById(R.id.list);
         topicAdapter = new TopicAdapter();
         listView.setAdapter(topicAdapter);
-
         registerForContextMenu(listView);
         try {
             client = new MqttAsyncClient("tcp://io.adafruit.com:1883", "k8c53795cakn", null);
@@ -258,12 +237,6 @@ public class MqttFragment extends Fragment {
             @Override
             public void connectionLost(Throwable cause) {
                 handler.obtainMessage(8).sendToTarget();
-                try {
-                    client.reconnect();
-                } catch (MqttException e) {
-                    Log.e(MainActivity.TAG, "connectionLost reconnect exception");
-                    e.printStackTrace();
-                }
             }
 
             @Override
@@ -277,14 +250,14 @@ public class MqttFragment extends Fragment {
                 Log.e(MainActivity.TAG, "deliveryComplete");
             }
         });
+        return view;
     }
 
     @Override
     public void onStart() {
         super.onStart();
-        //List<Topic> t = Arrays.asList(topics);
         ((ConnectivityManager) getContext().getSystemService(Context.CONNECTIVITY_SERVICE)).registerNetworkCallback(new NetworkRequest.Builder().addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET).build(), connectionCallback);
-        try {
+        /*try {
             if (firstTime) {
                 MqttConnectOptions option = new MqttConnectOptions();
                 option.setAutomaticReconnect(true);
@@ -314,27 +287,61 @@ public class MqttFragment extends Fragment {
         } catch (MqttException e) {
             Log.e(MainActivity.TAG, "onStart connect exception");
             e.printStackTrace();
-        }
+        }*/
     }
 
     @Override
     public void onStop() {
-        Log.e(MainActivity.TAG, "fragment onStop");
-        super.onStop();
+        Log.e(MainActivity.TAG, "MqttFragment onStop");
         try {
-            client.disconnect(0);
+            client.disconnect(0, null, null);
         } catch (MqttException e) {
             Log.e(MainActivity.TAG, "onStop disconnect exception");
             e.printStackTrace();
         }
         ((ConnectivityManager) getContext().getSystemService(Context.CONNECTIVITY_SERVICE)).unregisterNetworkCallback(connectionCallback);
         PreferenceManager.getDefaultSharedPreferences(getContext()).edit().putString("topics", new Gson().toJson(topics)).apply();
+        super.onStop();
     }
 
     @Override
     public void onDestroy() {
-        Log.e(MainActivity.TAG, "fragment onDestroy");
+        try {
+            client.close(true);
+        } catch (MqttException e) {
+            Log.e(MainActivity.TAG, "onDestroy close exception");
+            e.printStackTrace();
+        }
         super.onDestroy();
+    }
+
+    @Override
+    public void onCreateContextMenu(ContextMenu menu, View v, ContextMenu.ContextMenuInfo menuInfo) {
+        getActivity().getMenuInflater().inflate(R.menu.listview_contextmenu, menu);
+    }
+
+    @Override
+    public boolean onContextItemSelected(MenuItem item) {
+        int position = ((AdapterView.AdapterContextMenuInfo) item.getMenuInfo()).position;
+        switch (item.getItemId()) {
+            case R.id.subscribe:
+                try {
+                    client.subscribe(topics.get(position).name, 1, null, subscribeListener);
+                } catch (MqttException e) {
+                    Log.e(MainActivity.TAG, "subscribe exception");
+                    e.printStackTrace();
+                }
+                break;
+            case R.id.unsubscribe:
+                try {
+                    client.unsubscribe(topics.get(position).name, null, unsubscribeListener);
+                } catch (MqttException e) {
+                    Log.e(MainActivity.TAG, "unsubscribe exception");
+                    e.printStackTrace();
+                }
+                break;
+        }
+        return super.onContextItemSelected(item);
     }
 
     class TopicAdapter extends BaseAdapter {
@@ -360,9 +367,8 @@ public class MqttFragment extends Fragment {
         @Override
         public View getView(int position, View convertView, ViewGroup parent) {
             ViewHolder viewHolder;
-            if (convertView != null) {
-                viewHolder = (ViewHolder) convertView.getTag();
-            } else {
+            if (convertView != null) viewHolder = (ViewHolder) convertView.getTag();
+            else {
                 convertView = getLayoutInflater().inflate(R.layout.topic_row, parent, false);
                 viewHolder = new ViewHolder();
                 viewHolder.topicTextView = convertView.findViewById(R.id.topic);
@@ -375,11 +381,10 @@ public class MqttFragment extends Fragment {
                     @Override
                     public void onClick(View publishButton) {
                         number = (int) publishButton.getTag();
-                        if (publishDialog != null) {
-                            publishDialog.show();
-                        } else {
+                        if (publishDialog != null) publishDialog.show();
+                        else {
                             publishDialog = new AlertDialog.Builder(getContext())
-                                    .setView(getActivity().getLayoutInflater().inflate(R.layout.publish_dialog, null))
+                                    .setView(getLayoutInflater().inflate(R.layout.publish_dialog, null))
                                     .setPositiveButton("Publish", new DialogInterface.OnClickListener() {
                                         @Override
                                         public void onClick(DialogInterface dialog, int which) {
@@ -390,8 +395,7 @@ public class MqttFragment extends Fragment {
                                                 e.printStackTrace();
                                             }
                                         }
-                                    })
-                                    .show();
+                                    }).show();
                         }
                     }
                 });
@@ -407,7 +411,7 @@ public class MqttFragment extends Fragment {
                         number = (int) settingButton.getTag();
                         if (settingDialog == null) {
                             settingDialog = new AlertDialog.Builder(getContext()).setTitle("Notify when value:")
-                                    .setView(getActivity().getLayoutInflater().inflate(R.layout.setting_dialog, null))
+                                    .setView(getLayoutInflater().inflate(R.layout.setting_dialog, null))
                                     .setNegativeButton("Cancel", null).setPositiveButton("Save", null).create();
                             settingDialog.setCanceledOnTouchOutside(false);
                             settingDialog.create();
@@ -442,7 +446,7 @@ public class MqttFragment extends Fragment {
             }
             Topic topic = topics.get(position);
             viewHolder.topicTextView.setText(topic.name);
-            viewHolder.statusIcon.setBackgroundColor(topic.isSubscribed ? 0xff669900 : 0xffcc0000);
+            viewHolder.statusIcon.setBackgroundColor(topic.isSubscribed ? 0xff99cc00 : 0xffcc0000);//0xff669900//0xff99cc00//0xffcc0000//0xffff4444
             viewHolder.messageTextView.setText(topic.value);
             viewHolder.publishButton.setTag(position);
             viewHolder.toggleBell.setChecked(topic.notify);
@@ -459,36 +463,6 @@ public class MqttFragment extends Fragment {
             ToggleButton toggleBell;
             ImageButton settingButton;
         }
-    }
-
-    @Override
-    public void onCreateContextMenu(ContextMenu menu, View v, ContextMenu.ContextMenuInfo menuInfo) {
-        Log.e(MainActivity.TAG, "onCreateContextMenu");
-        getActivity().getMenuInflater().inflate(R.menu.listview_contextmenu, menu);
-    }
-
-    @Override
-    public boolean onContextItemSelected(MenuItem item) {
-        int position = ((AdapterView.AdapterContextMenuInfo) item.getMenuInfo()).position;
-        switch (item.getItemId()) {
-            case R.id.subscribe:
-                try {
-                    client.subscribe(topics.get(position).name, 1, null, subscribeListener);
-                } catch (MqttException e) {
-                    Log.e(MainActivity.TAG, "subscribe exception");
-                    e.printStackTrace();
-                }
-                break;
-            case R.id.unsubscribe:
-                try {
-                    client.unsubscribe(topics.get(position).name, null, unsubscribeListener);
-                } catch (MqttException e) {
-                    Log.e(MainActivity.TAG, "unsubscribe exception");
-                    e.printStackTrace();
-                }
-                break;
-        }
-        return super.onContextItemSelected(item);
     }
 }
 /*connectionReceiver = new BroadcastReceiver() {@Override

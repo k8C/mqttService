@@ -230,14 +230,13 @@ public class DriveFragment extends androidx.fragment.app.Fragment {
                     s = new StringBuilder();
                     if (connection.getResponseCode() == 200) {
                         stream = connection.getInputStream();
-                        while ((c = stream.read()) != -1) {
+                        while ((c = stream.read()) != -1)
                             if (c == 107 && stream.read() == 101 && stream.read() == 110 && stream.read() == 34 && stream.read() == 58) {
                                 stream.read();
                                 stream.read();
                                 while ((c = stream.read()) != 34) s.append((char) c);
                                 break;
                             }
-                        }
                         stream.close();
                         token = "Bearer " + s.toString();
                         Log.e(TAG, token);
@@ -303,7 +302,7 @@ public class DriveFragment extends androidx.fragment.app.Fragment {
                     connection.addRequestProperty("Authorization", token);
                     if (connection.getResponseCode() == 200) {
                         stream = connection.getInputStream();
-                        while ((c = stream.read()) != -1) {
+                        while ((c = stream.read()) != -1)
                             if (c == 58 && stream.read() == 32 && stream.read() == 34) {
                                 s = new StringBuilder();
                                 while ((c = stream.read()) != 34) s.append((char) c);
@@ -315,7 +314,6 @@ public class DriveFragment extends androidx.fragment.app.Fragment {
                                     names.add(s.toString());
                                 }
                             }
-                        }
                         stream.close();
                         if (names.size() == 0) {
                             Log.e(TAG, "found nothing");
@@ -385,7 +383,7 @@ public class DriveFragment extends androidx.fragment.app.Fragment {
 
         @Override
         protected void onProgressUpdate(String... values) {
-            if (!isCancelled()) {
+            if (!isCancelled())
                 if (values[0] == null) statusTextReference.get().setText(values[1]);
                 else {
                     Log.e(TAG, "file " + values[0] + " done");
@@ -405,7 +403,6 @@ public class DriveFragment extends androidx.fragment.app.Fragment {
                         e.printStackTrace();
                     }
                 }
-            }
         }
 
         @Override
